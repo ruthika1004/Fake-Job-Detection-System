@@ -8,7 +8,9 @@ from sklearn.linear_model import LogisticRegression
 app = Flask(__name__)
 
 # ---------------- Load Dataset & Train Model ----------------
-df = pd.read_csv("fake_job_postings.csv")
+#df = pd.read_csv("fake_job_postings.csv")
+url = "https://drive.google.com/uc?id=1fg2wvgk97KTKAcxp61hNiZ34DTJOIoZn"
+df = pd.read_csv(url)
 
 df['text'] = df['title'].fillna('') + ' ' + \
              df['company_profile'].fillna('') + ' ' + \
@@ -155,3 +157,4 @@ def home():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
