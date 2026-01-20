@@ -1,22 +1,18 @@
 from flask import Flask, request, render_template_string
-import pandas as pd
 import re
 import shap
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
+import joblib
 
 app = Flask(__name__)
 
-# ---------------- Load Dataset & Train Model ----------------
-#df = pd.read_csv("fake_job_postings.csv")
-url = "https://drive.google.com/uc?id=1fg2wvgk97KTKAcxp61hNiZ34DTJOIoZn"
-df = pd.read_csv(url)
+# ---------------- Load Pretrained Model ----------------
+model = joblib.load("model.pkl")
+vectorizer = joblib.load("vectorizer.pkl")
 
-df['text'] = df['title'].fillna('') + ' ' + \
-             df['company_profile'].fillna('') + ' ' + \
-             df['description'].fillna('') + ' ' + \
-             df['requirements'].fillna('')
+explainer = None   # SHAP will be initialized only when needed
 
+
+# ---------------- Text Cleaning ----------------
 def clean_text(text):
     text = text.lower()
     text = re.sub(r'http\S+', '', text)
@@ -24,16 +20,6 @@ def clean_text(text):
     text = re.sub(r'\s+', ' ', text)
     return text
 
-df['clean_text'] = df['text'].apply(clean_text)
-
-vectorizer = TfidfVectorizer(stop_words='english', max_features=5000)
-X = vectorizer.fit_transform(df['clean_text'])
-y = df['fraudulent']
-
-model = LogisticRegression(max_iter=1000)
-model.fit(X, y)
-
-explainer = shap.LinearExplainer(model, X)
 
 # ---------------- Credibility Score ----------------
 def calculate_credibility(text):
@@ -44,6 +30,7 @@ def calculate_credibility(text):
     if "company" in text: score += 15
     if "email" in text or "contact" in text: score += 15
     return score
+
 
 # ---------------- UI ----------------
 HTML_PAGE = """
@@ -101,8 +88,11 @@ button { padding:10px 20px; margin-right:10px; background:#007bff; color:white; 
 </html>
 """
 
+
 @app.route("/", methods=["GET", "POST"])
 def home():
+    global explainer
+
     result = color = score = None
     fake_words = []
     genuine_words = []
@@ -120,6 +110,10 @@ def home():
             result = "FAKE JOB ❌" if prediction == 1 else "GENUINE JOB ✅"
             color = "fake" if prediction == 1 else "real"
             score = calculate_credibility(clean)
+
+            # Initialize SHAP only once (lazy loading)
+            if explainer is None:
+                explainer = shap.LinearExplainer(model, vec, feature_perturbation="interventional")
 
             shap_values = explainer.shap_values(vec)
             feature_names = vectorizer.get_feature_names_out()
@@ -155,6 +149,6 @@ def home():
         job_text=job_text
     )
 
+
 if __name__ == "__main__":
     app.run(debug=True)
-
