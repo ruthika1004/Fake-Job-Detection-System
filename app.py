@@ -95,12 +95,15 @@ h1 {
 
 textarea {
     width:100%;
-    height:160px;
+    min-height:160px;
+    max-height:400px;
     padding:14px;
     font-size:16px;
     border-radius:8px;
     border:2px solid #000;
     box-sizing:border-box;
+    overflow-y:auto;
+    resize:none;
 }
 
 .buttons {
@@ -218,6 +221,19 @@ Result:
 {% endif %}
 
 </div>
+
+<script>
+const textarea = document.querySelector("textarea");
+
+function autoResize() {
+    textarea.style.height = "auto";
+    textarea.style.height = textarea.scrollHeight + "px";
+}
+
+textarea.addEventListener("input", autoResize);
+window.addEventListener("load", autoResize);
+</script>
+
 </body>
 </html>
 """
